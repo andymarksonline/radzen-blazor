@@ -10,7 +10,7 @@
     <OutputType>Library</OutputType>
     <IsPackable>true</IsPackable>
     <PackageId>HolidayRentPro.Radzen.Blazor</PackageId>
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
     <Copyright>Radzen Ltd.</Copyright>
     <Authors>HolidayRentPro / Radzen</Authors>
     <Description>A fork of the Radzen project for HolidayRentPro</Description>
