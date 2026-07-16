@@ -79,6 +79,43 @@ namespace Radzen.Blazor.Tests
         }
 
         [Fact]
+        public void DropDown_NonFilterable_TabWhenOpen_DoesNotInvokeFocusNext()
+        {
+            using var ctx = new TestContext();
+            ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+
+            var component = ctx.RenderComponent<RadzenDropDown<string>>(p =>
+            {
+                p.Add(x => x.Data, new[] { "one", "two" });
+            });
+
+            var combo = component.Find("[role='combobox']");
+
+            combo.KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Code = "Enter" });
+            combo.KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Code = "Tab" });
+
+            var focusNextCalls = ctx.JSInterop.Invocations.Count(i => i.Identifier == "Radzen.focusNext");
+            Assert.Equal(0, focusNextCalls);
+        }
+
+        [Fact]
+        public void DropDown_NonFilterable_TabAfterArrow_DoesNotInvokeFocusNext()
+        {
+            using var ctx = new TestContext();
+            ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+
+            var component = DropDown<int>(ctx);
+
+            var combo = component.Find("[role='combobox']");
+
+            combo.KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Code = "ArrowDown" });
+            combo.KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Code = "Tab" });
+
+            var focusNextCalls = ctx.JSInterop.Invocations.Count(i => i.Identifier == "Radzen.focusNext");
+            Assert.Equal(0, focusNextCalls);
+        }
+
+        [Fact]
         public void DropDown_AppliesSelectionStyleForIntValue()
         {
             using var ctx = new TestContext();
@@ -869,6 +906,26 @@ namespace Radzen.Blazor.Tests
         }
 
         [Fact]
+        public void DropDown_NoFilter_Combobox_ControlsListbox()
+        {
+            using var ctx = new TestContext();
+            ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+
+            var component = DropDown<int>(ctx, parameters =>
+            {
+                parameters.Add(p => p.AllowFiltering, false);
+                parameters.Add(p => p.ValueProperty, nameof(DataItem.Id));
+            });
+
+            Assert.Empty(component.FindAll("input.rz-dropdown-filter"));
+
+            var combobox = component.Find("div[role='combobox']");
+            var listbox = component.Find("ul[role='listbox']");
+
+            Assert.Equal(listbox.Id, combobox.GetAttribute("aria-controls"));
+        }
+
+        [Fact]
         public void DropDown_Multiple_FilterInput_HasComboboxAriaAttributes()
         {
             using var ctx = new TestContext();
@@ -897,6 +954,194 @@ namespace Radzen.Blazor.Tests
             Assert.Equal("listbox", filterInput.GetAttribute("aria-haspopup"));
             Assert.NotNull(filterInput.GetAttribute("aria-expanded"));
             Assert.Equal("list", filterInput.GetAttribute("aria-autocomplete"));
+        }
+
+        [Fact]
+        public void DropDown_ConsumerSuppliedAriaLabel_OverridesComputedAriaLabel()
+        {
+            using var ctx = new TestContext();
+
+            ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+
+            var component = DropDown<int>(ctx, parameters =>
+            {
+                parameters.Add(p => p.ValueProperty, nameof(DataItem.Id));
+                parameters.AddUnmatched("aria-label", "Filter by status");
+            });
+
+            var combobox = component.Find("div[role='combobox']");
+
+            Assert.Equal("Filter by status", combobox.GetAttribute("aria-label"));
+        }
+
+        [Fact]
+        public void DropDown_Multiple_AriaLabel_ReflectsSelectedItems()
+        {
+            using var ctx = new TestContext();
+            ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+
+            var data = new[]
+            {
+                new DataItem { Text = "Item 1", Id = 1 },
+                new DataItem { Text = "Item 2", Id = 2 },
+                new DataItem { Text = "Item 3", Id = 3 },
+            };
+
+            var component = ctx.RenderComponent<RadzenDropDown<IEnumerable<int>>>(parameters =>
+            {
+                parameters.Add(p => p.Data, data);
+                parameters.Add(p => p.TextProperty, nameof(DataItem.Text));
+                parameters.Add(p => p.ValueProperty, nameof(DataItem.Id));
+                parameters.Add(p => p.Multiple, true);
+                parameters.Add(p => p.Value, new List<int> { 1, 3 });
+            });
+
+            var combobox = component.Find("div[role='combobox']");
+
+            Assert.Equal("Item 1,Item 3", combobox.GetAttribute("aria-label"));
+        }
+
+        [Fact]
+        public void DropDown_Multiple_AriaLabel_ShowsCount_WhenAboveMaxSelectedLabels()
+        {
+            using var ctx = new TestContext();
+            ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+
+            var data = new[]
+            {
+                new DataItem { Text = "Item 1", Id = 1 },
+                new DataItem { Text = "Item 2", Id = 2 },
+                new DataItem { Text = "Item 3", Id = 3 },
+            };
+
+            var component = ctx.RenderComponent<RadzenDropDown<IEnumerable<int>>>(parameters =>
+            {
+                parameters.Add(p => p.Data, data);
+                parameters.Add(p => p.TextProperty, nameof(DataItem.Text));
+                parameters.Add(p => p.ValueProperty, nameof(DataItem.Id));
+                parameters.Add(p => p.Multiple, true);
+                parameters.Add(p => p.MaxSelectedLabels, 2);
+                parameters.Add(p => p.Value, new List<int> { 1, 2, 3 });
+            });
+
+            var combobox = component.Find("div[role='combobox']");
+
+            Assert.Equal($"3 {component.Instance.SelectedItemsText}", combobox.GetAttribute("aria-label"));
+        }
+
+        [Fact]
+        public void DropDown_Chips_RemoveButtons_AreNotTabbable()
+        {
+            using var ctx = new TestContext();
+            ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+
+            var data = new[]
+            {
+                new DataItem { Text = "Item 1", Id = 1 },
+                new DataItem { Text = "Item 2", Id = 2 },
+            };
+
+            var component = ctx.RenderComponent<RadzenDropDown<IEnumerable<int>>>(parameters =>
+            {
+                parameters.Add(p => p.Data, data);
+                parameters.Add(p => p.TextProperty, nameof(DataItem.Text));
+                parameters.Add(p => p.ValueProperty, nameof(DataItem.Id));
+                parameters.Add(p => p.Multiple, true);
+                parameters.Add(p => p.Chips, true);
+                parameters.Add(p => p.Value, new List<int> { 1, 2 });
+            });
+
+            var buttons = component.FindAll(".rz-chip button");
+
+            Assert.NotEmpty(buttons);
+            Assert.All(buttons, b => Assert.Equal("-1", b.GetAttribute("tabindex")));
+        }
+
+        [Fact]
+        public void DropDown_HiddenHelperInput_IsHiddenFromAccessibilityTree()
+        {
+            using var ctx = new TestContext();
+            ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+
+            var component = DropDown<int>(ctx, parameters =>
+            {
+                parameters.Add(p => p.ValueProperty, nameof(DataItem.Id));
+            });
+
+            var hiddenInput = component.Find(".rz-helper-hidden-accessible input");
+
+            Assert.Equal("true", hiddenInput.GetAttribute("aria-hidden"));
+            Assert.Equal("-1", hiddenInput.GetAttribute("tabindex"));
+        }
+
+        [Fact]
+        public void DropDown_WithoutConsumerAriaLabel_FallsBackToComputedAriaLabel()
+        {
+            using var ctx = new TestContext();
+
+            ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+
+            var component = DropDown<int>(ctx, parameters =>
+            {
+                parameters.Add(p => p.ValueProperty, nameof(DataItem.Id));
+                parameters.Add(p => p.Value, 1);
+            });
+
+            var combobox = component.Find("div[role='combobox']");
+
+            Assert.Equal("Item 1", combobox.GetAttribute("aria-label"));
+        }
+
+        [Fact]
+        public void DropDown_Renders_LoadingTemplate_WhenIsLoading()
+        {
+            using var ctx = new TestContext();
+            ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+
+            var component = DropDown<int>(ctx, parameters =>
+            {
+                parameters
+                    .Add(p => p.IsLoading, true)
+                    .Add(p => p.LoadingTemplate, b => b.AddMarkupContent(0, "<span class=\"loading-marker\">Loading...</span>"));
+            });
+
+            Assert.Contains("loading-marker", component.Markup);
+            Assert.DoesNotContain("Item 1", component.Markup);
+            Assert.DoesNotContain("Item 2", component.Markup);
+        }
+
+        [Fact]
+        public void DropDown_DoesNotRender_LoadingTemplate_WhenNotLoading()
+        {
+            using var ctx = new TestContext();
+            ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+
+            var component = DropDown<int>(ctx, parameters =>
+            {
+                parameters
+                    .Add(p => p.LoadingTemplate, b => b.AddMarkupContent(0, "<span class=\"loading-marker\">Loading...</span>"));
+            });
+
+            Assert.DoesNotContain("loading-marker", component.Markup);
+            Assert.Contains("Item 1", component.Markup);
+        }
+
+        [Fact]
+        public void DropDown_Suppresses_EmptyTemplate_WhileLoading()
+        {
+            using var ctx = new TestContext();
+            ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+
+            var component = ctx.RenderComponent<RadzenDropDown<int>>(parameters =>
+            {
+                parameters
+                    .Add(p => p.Data, new DataItem[] { })
+                    .Add(p => p.TextProperty, nameof(DataItem.Text))
+                    .Add(p => p.IsLoading, true)
+                    .Add(p => p.EmptyTemplate, b => b.AddMarkupContent(0, "<span class=\"empty-marker\">No data</span>"));
+            });
+
+            Assert.DoesNotContain("empty-marker", component.Markup);
         }
     }
 }

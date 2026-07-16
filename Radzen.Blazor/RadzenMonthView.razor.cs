@@ -22,7 +22,11 @@ namespace Radzen.Blazor
         /// <inheritdoc />
         public override string Title
         {
-            get => Scheduler?.CurrentDate.ToString("MMMM yyyy", Scheduler.Culture ?? System.Globalization.CultureInfo.CurrentCulture) ?? "";
+            get
+            {
+                var date = Scheduler?.CurrentDate.Date ?? DateTime.Today;
+                return FormatTitle(date.StartOfMonth(), date.EndOfMonth(), Scheduler?.CurrentDate.ToString("MMMM yyyy", Scheduler.Culture ?? System.Globalization.CultureInfo.CurrentCulture) ?? "");
+            }
         }
         /// <summary>
         /// Gets or sets a value indicating whether the scheduler should render appointments using the altered code or the existing code. Set to <c>true</c> by default.
@@ -41,12 +45,14 @@ namespace Radzen.Blazor
         [Parameter]
         public int? MaxAppointmentsInSlot { get; set; }
 
+        private string? moreText;
+
         /// <summary>
         /// Specifies the text displayed when there are more appointments in a slot than <see cref="MaxAppointmentsInSlot" />.
         /// </summary>
         /// <value>The more text. Set to <c>"+ {0} more"</c> by default.</value>
         [Parameter]
-        public string MoreText { get; set; } = "+ {0} more";
+        public string MoreText { get => moreText ?? Localize(nameof(RadzenStrings.MonthView_MoreText)); set => moreText = value; }
 
         /// <inheritdoc />
         public override DateTime StartDate

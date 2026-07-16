@@ -46,129 +46,32 @@
                                 var top = (bandIndex + 1) * 1.5;
                                 var height = 1.5;
 
-                                <Appointment Data=@info.Data Top=@top Left=@left Width=@width Height=@height Click=@OnAppointmentClick
-                                             CssClass="@(CurrentDate >= day.Start && CurrentDate <= day.Start.AddDays(1) && object.Equals(currentAppointments?.ElementAtOrDefault(currentAppointment), info.Data) ? "rz-state-focused" : "")"
-                                             DragStart=@OnAppointmentDragStart />
-                            }
+                            <Appointment Data=@info.Data Top=@top Left=@left Width=@width Height=@height Click=@OnAppointmentClick
+                                CssClass="@(CurrentDate >= day.Start && CurrentDate <= day.Start.AddDays(1) && object.Equals(currentAppointments?.ElementAtOrDefault(currentAppointment), info.Data) ? "rz-state-focused" : "")"
+                                DragStart=@OnAppointmentDragStart />
                         }
-                    </div>
-                    <div class="rz-slots">
-                        @for (var day = 0; day < 7; day++)
-                        {
-                            var dayOfWeek = StartDate.AddDays(days++);
-                            var slot = week.Days[day];
-                            <div @onclick="@(args => OnSlotClick(dayOfWeek))" ondragover="event.preventDefault();" @ondrop=@(args => @OnDrop(dayOfWeek)) @attributes=@Attributes(dayOfWeek)>
-                                <div class="rz-slot-title @(dayOfWeek == CurrentDate ? " rz-state-focused" : "")" role="button" tabindex="0"
-                                     @onclick=@(args => OnDayClick(dayOfWeek)) @onclick:stopPropagation
-                                     @onkeydown="@(args => OnDayHeaderKeyDown(args, dayOfWeek))">
-                                    @((Scheduler?.Culture ?? System.Globalization.CultureInfo.CurrentCulture).Calendar.GetDayOfMonth(dayOfWeek))
-                                    @if (slot.Hidden > 0)
-                                    {
-                                        <button type="button" class="rz-event-list-btn" @onclick=@(args => { if (slot.Appointments != null && MoreText != null) _ = OnListClick(slot.Start, slot.Appointments); }) @onclick:stopPropagation>@(MoreText != null ? String.Format(MoreText, slot.Hidden) : "")</button>
-                                    }
-                                </div>
-                            </div>
-                        }
-                    </div>
+                    }
                 </div>
-            }
-        }
-        else
-        {
-            // Altered code to bodge event times
-            foreach (var week in (weeks ?? new List<Week>()))
-            {
-                var alreadyRenderedAppointments = new List<AppointmentData>();
-                double totTop = 0;
-                if (week?.Bands == null || week?.Days == null) continue;
-                <div class="rz-week">
-                    <div class="rz-events">
-                        @for (var bandIndex = 0; bandIndex < week.Bands.Length; bandIndex++)
-                        {
-                            var fullDay = TimeSpan.FromDays(1);
-                            var band = week.Bands[bandIndex].ToList();
-                            foreach (var info in band)
+                <div class="rz-slots">
+                @for (var day = 0; day < 7; day ++)
+                {
+                    var dayOfWeek = StartDate.AddDays(days++);
+                    var slot = week.Days[day];
+                    <div @onclick="@(args => OnSlotClick(dayOfWeek))" @ondragover:preventDefault @ondrop=@(args => @OnDrop(dayOfWeek)) @attributes=@Attributes(dayOfWeek)>
+                        <div class="rz-slot-title @(dayOfWeek == CurrentDate ? " rz-state-focused" : "")" role="button" tabindex="0"
+                             @onclick=@(args => OnDayClick(dayOfWeek)) @onclick:stopPropagation
+                             @onkeydown="@(args => OnDayHeaderKeyDown(args, dayOfWeek))">
+                            @((Scheduler?.Culture ?? System.Globalization.CultureInfo.CurrentCulture).Calendar.GetDayOfMonth(dayOfWeek))
+                            @if (slot.Hidden > 0)
                             {
-                                var dayIndex = info.DayIndex;
-                                var day = week.Days[dayIndex];
-                                var slotWidth = 100 / 7.0;
-                                var left = dayIndex * slotWidth;
-                                double startTimeOffset = 0;
-                                if (day.Start.Date == info!.Data!.Start.Date)
-                                {
-                                    // Offset the start by the start time, if this is not a continuation of an event
-                                    double percentageStart = (info!.Data!.Start.TimeOfDay.TotalSeconds / fullDay.TotalSeconds) * 100;
-                                    startTimeOffset = (slotWidth / 100) * percentageStart;
-                                    left += startTimeOffset;
-                                }
-                                var length = Math.Max(1, Math.Ceiling(info!.Data!.End.Subtract(week.Start).TotalDays) - dayIndex);
-                                var width = info.Data.End <= week.End ? (length) * slotWidth : (7 - dayIndex) * slotWidth;
-                                width -= startTimeOffset;
-
-                                if (info!.Data!.End.Date < week.End)
-                                {
-                                    var percentage = (info!.Data!.End.TimeOfDay.TotalSeconds / fullDay.TotalSeconds) * 100;
-                                    var endTimeOffset = slotWidth - ((slotWidth / 100) * percentage);
-                                    width -= endTimeOffset;
-                                }
-                                DateTime eventEnd = info.Data.End.AddTicks(-(info.Data.End.Ticks % TimeSpan.TicksPerSecond));
-
-                                double top = 1;
-                                var height = 1.5;
-                                // Single day events go after any multi day events in position 1.5, then 3, etc. depending on how many events are in the same slot
-                                if (info.Data.Start.TimeOfDay.Ticks == 0 && eventEnd.TimeOfDay == new TimeSpan(23, 59, 59))
-                                {
-                                    // If there is a multi-day appointment that spans this one then we move this one below it
-                                    if (Appointments!.Any(appt => appt.Start < info.Data.End && appt.End > info.Data.Start 
-                                        && appt.Start != info.Data.Start && appt.End != info.Data.End))
-                                    {
-                                        if (alreadyRenderedAppointments!.Any(appt => appt.Start == info.Data.Start && appt.End == info.Data.End)){
-                                            totTop += (totTop == 0 ? 2.5 : 1.5);
-                                        }
-                                        else
-                                        {
-                                            totTop = 2.5;
-                                        }
-                                    }
-                                    else if (alreadyRenderedAppointments!.Any(appt => appt.Start == info.Data.Start && appt.End == info.Data.End))
-                                    {
-                                        totTop += totTop == 0 ? 1 : 1.5;
-                                    }
-                                    else
-                                    {
-                                        totTop = 1;
-                                    }
-                                    top = totTop;
-                                }
-                                <Appointment Data=@info.Data Top=@top Left=@left Width=@width Height=@height Click=@OnAppointmentClick
-                                             CssClass="@(CurrentDate >= day.Start && CurrentDate <= day.Start.AddDays(1) && object.Equals(currentAppointments?.ElementAtOrDefault(currentAppointment), info.Data) ? "rz-state-focused" : "")"
-                                             DragStart=@OnAppointmentDragStart />
-                                alreadyRenderedAppointments.Add(info.Data);
+                                <button type="button" class="rz-event-list-btn" @onclick=@(args => { if (slot.Appointments != null && MoreText != null) _ = OnListClick(slot.Start, slot.Appointments); }) @onclick:stopPropagation>@(MoreText != null ? String.Format(MoreText, slot.Hidden) : "")</button>
                             }
-                        }
+                        </div>
                     </div>
-                    <div class="rz-slots">
-                        @for (var day = 0; day < 7; day++)
-                        {
-                            var dayOfWeek = StartDate.AddDays(days++);
-                            var slot = week.Days[day];
-                            <div @onclick="@(args => OnSlotClick(dayOfWeek))" ondragover="event.preventDefault();" @ondrop=@(args => @OnDrop(dayOfWeek)) @attributes=@Attributes(dayOfWeek)>
-                                <div class="rz-slot-title @(dayOfWeek == CurrentDate ? " rz-state-focused" : "")" role="button" tabindex="0"
-                                     @onclick=@(args => OnDayClick(dayOfWeek)) @onclick:stopPropagation
-                                     @onkeydown="@(args => OnDayHeaderKeyDown(args, dayOfWeek))">
-                                    @((Scheduler?.Culture ?? System.Globalization.CultureInfo.CurrentCulture).Calendar.GetDayOfMonth(dayOfWeek))
-                                    @if (slot.Hidden > 0)
-                                    {
-                                        <button type="button" class="rz-event-list-btn" @onclick=@(args => { if (slot.Appointments != null && MoreText != null) _ = OnListClick(slot.Start, slot.Appointments); }) @onclick:stopPropagation>@(MoreText != null ? String.Format(MoreText, slot.Hidden) : "")</button>
-                                    }
-                                </div>
-                            </div>
-                        }
-                    </div>
+                }
                 </div>
-            }
-        }
-
+            </div>
+         }
     </div>
 </div>
 
@@ -431,7 +334,12 @@
         if (Scheduler != null)
         {
             await Scheduler.SelectAppointment(data);
-            await contentView.FocusAsync();
+
+            try
+            {
+                await contentView.FocusAsync();
+            }
+            catch (JSException) {}
         }
     }
 

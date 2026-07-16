@@ -97,22 +97,35 @@ namespace Radzen.Blazor
                 return;
             }
 
-            Value = newValue;
-
-            await ValueChanged.InvokeAsync(Value);
-
-            if (FieldIdentifier.FieldName != null)
+            // When ValueChanged is wired, leave _value alone — parameter re-flow handles
+            // both accepted updates (Value setter overwrites _value) and parent rejection
+            // (parameter unchanged → Blazor skips SetParametersAsync → _value stays at the
+            // bound value → @bind:get force-syncs the DOM back to it). When ValueChanged
+            // is NOT wired, no re-flow occurs, so _value must be updated locally or
+            // @bind:get would re-evaluate to the stale initial value and the framework
+            // would wipe the DOM on every blur.
+            if (!IsBound)
             {
-                EditContext?.NotifyFieldChanged(FieldIdentifier);
+                Value = newValue;
             }
 
-            await Change.InvokeAsync(Value);
+            await ValueChanged.InvokeAsync(newValue);
+
+            NotifyFieldChanged(newValue);
+
+            await Change.InvokeAsync(newValue);
         }
+
+        /// <summary>
+        /// Gets or sets the size of the component.
+        /// </summary>
+        [Parameter]
+        public InputSize InputSize { get; set; } = InputSize.Medium;
 
         /// <inheritdoc />
         protected override string GetComponentCssClass()
         {
-            return GetClassList("rz-textbox").ToString();
+            return GetClassList("rz-textbox").AddInputSize(InputSize).ToString();
         }
 
         /// <inheritdoc />

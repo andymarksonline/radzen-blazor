@@ -1,3 +1,6 @@
+using System;
+using System.Diagnostics.CodeAnalysis;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
@@ -54,6 +57,7 @@ namespace Radzen.Blazor
         private PersistingComponentStateSubscription? persistingSubscription;
 
         /// <inheritdoc />
+        [UnconditionalSuppressMessage(TrimMessages.Trimming, TrimMessages.IL2026, Justification = TrimMessages.ComponentTypePreserved)]
         protected override void OnInitialized()
         {
             persistentComponentState = ServiceProvider.GetService<PersistentComponentState>();
@@ -80,6 +84,7 @@ namespace Radzen.Blazor
             base.OnInitialized();
         }
 
+        [UnconditionalSuppressMessage(TrimMessages.Trimming, TrimMessages.IL2026, Justification = TrimMessages.ThemeTypePreserved)]
         private string? GetCurrentTheme()
         {
             if (persistentComponentState?.TryTakeFromJson(nameof(Theme), out string? theme) == true)
@@ -90,6 +95,7 @@ namespace Radzen.Blazor
             return Theme;
         }
 
+        [UnconditionalSuppressMessage(TrimMessages.Trimming, TrimMessages.IL2026, Justification = TrimMessages.ThemeTypePreserved)]
         private Task PersistTheme()
         {
             persistentComponentState?.PersistAsJson(nameof(Theme), theme);

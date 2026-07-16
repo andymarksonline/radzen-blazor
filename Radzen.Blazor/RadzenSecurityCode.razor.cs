@@ -44,6 +44,32 @@ namespace Radzen.Blazor
         [Parameter]
         public string? Gap { get; set; }
 
+        private string? ariaLabel;
+
+        /// <summary>
+        /// Gets or sets the accessible label text of the security code group.
+        /// </summary>
+        /// <value>The ARIA label of the security code group. Default is "Security code".</value>
+        [Parameter]
+        public string AriaLabel { get => ariaLabel ?? Localize(nameof(RadzenStrings.SecurityCode_AriaLabel)); set => ariaLabel = value; }
+
+        private string? inputAriaLabelFormat;
+
+        /// <summary>
+        /// Gets or sets the format string used to build the accessible label of each input.
+        /// The first argument is the input position and the second one is the total number of inputs.
+        /// </summary>
+        /// <value>The ARIA label format of each input. Default is "Character {0} of {1}".</value>
+        [Parameter]
+        public string InputAriaLabelFormat { get => inputAriaLabelFormat ?? Localize(nameof(RadzenStrings.SecurityCode_InputAriaLabelFormat)); set => inputAriaLabelFormat = value; }
+
+        string GetInputAriaLabel(int index)
+        {
+            return string.Format(System.Globalization.CultureInfo.CurrentCulture, InputAriaLabelFormat, index, Count);
+        }
+
+        IJSObjectReference? _jsRef;
+
         bool firstRender;
         bool visibleChanged;
         bool disabledChanged;
@@ -93,7 +119,13 @@ namespace Radzen.Blazor
 
                 if (Visible && !Disabled && JSRuntime != null)
                 {
-                    await JSRuntime.InvokeVoidAsync("Radzen.createSecurityCode", GetId(), Reference, Element,
+                    if (_jsRef != null)
+                    {
+                        await _jsRef.InvokeVoidAsync("dispose");
+                        await _jsRef.DisposeAsync();
+                    }
+
+                    _jsRef = await JSRuntime.InvokeAsync<IJSObjectReference>("Radzen.createSecurityCode", GetId(), Reference, Element,
                         Type == SecurityCodeType.Numeric ? true : false);
 
                     StateHasChanged();
@@ -106,14 +138,8 @@ namespace Radzen.Blazor
         {
             base.Dispose();
 
-            if (IsJSRuntimeAvailable && JSRuntime != null)
-            {
-                var id = GetId();
-                if (id != null)
-                {
-                    JSRuntime.InvokeVoid("Radzen.destroySecurityCode", id, Element);
-                }
-            }
+            _jsRef?.InvokeVoidAsync("dispose");
+            _jsRef?.DisposeAsync();
 
             GC.SuppressFinalize(this);
         }

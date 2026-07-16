@@ -106,6 +106,46 @@ namespace Radzen.Blazor.Tests
         }
 
         [Fact]
+        public void DropDownDataGrid_SearchInput_HasComboboxAriaAttributes()
+        {
+            using var ctx = new TestContext();
+            ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+            var data = new List<string> { "Item1", "Item2" };
+
+            var component = ctx.RenderComponent<RadzenDropDownDataGrid<string>>(parameters =>
+            {
+                parameters.Add(p => p.AllowFiltering, true);
+                parameters.Add(p => p.Data, data);
+            });
+
+            var searchInput = component.Find("input.rz-lookup-search-input");
+            var grid = component.Find("div[role='grid']");
+
+            Assert.Equal("combobox", searchInput.GetAttribute("role"));
+            Assert.Equal(grid.Id, searchInput.GetAttribute("aria-controls"));
+            Assert.Equal("grid", searchInput.GetAttribute("aria-haspopup"));
+            Assert.Equal("list", searchInput.GetAttribute("aria-autocomplete"));
+            Assert.NotNull(searchInput.GetAttribute("aria-expanded"));
+        }
+
+        [Fact]
+        public void DropDownDataGrid_EmbeddedGrid_IsNotTabbable()
+        {
+            using var ctx = new TestContext();
+            ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+            var data = new List<string> { "Item1", "Item2" };
+
+            var component = ctx.RenderComponent<RadzenDropDownDataGrid<string>>(parameters =>
+            {
+                parameters.Add(p => p.Data, data);
+            });
+
+            var grid = component.Find("div[role='grid']");
+
+            Assert.Equal("-1", grid.GetAttribute("tabindex"));
+        }
+
+        [Fact]
         public void DropDownDataGrid_Renders_Placeholder()
         {
             using var ctx = new TestContext();
@@ -451,6 +491,39 @@ namespace Radzen.Blazor.Tests
             component.Find(".rz-lookup-search-input").Change("foo");
 
             Assert.Contains(loadDataCalls, c => c.Filter == "foo");
+        }
+
+        [Fact]
+        public void DropDownDataGrid_Forwards_IsLoading_ToInnerDataGrid()
+        {
+            using var ctx = new TestContext();
+            ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+            var data = new List<string> { "Item1", "Item2" };
+
+            var component = ctx.RenderComponent<RadzenDropDownDataGrid<string>>(parameters =>
+            {
+                parameters.Add(p => p.Data, data);
+                parameters.Add(p => p.IsLoading, true);
+            });
+
+            Assert.Contains("rz-datatable-loading", component.Markup);
+        }
+
+        [Fact]
+        public void DropDownDataGrid_Forwards_LoadingTemplate_ToInnerDataGrid()
+        {
+            using var ctx = new TestContext();
+            ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+            var data = new List<string> { "Item1", "Item2" };
+
+            var component = ctx.RenderComponent<RadzenDropDownDataGrid<string>>(parameters =>
+            {
+                parameters.Add(p => p.Data, data);
+                parameters.Add(p => p.IsLoading, true);
+                parameters.Add(p => p.LoadingTemplate, b => b.AddMarkupContent(0, "<span class=\"loading-marker\">Loading...</span>"));
+            });
+
+            Assert.Contains("loading-marker", component.Markup);
         }
     }
 }

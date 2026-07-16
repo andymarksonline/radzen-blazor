@@ -15,7 +15,7 @@
 @if (Visible)
 {
     <div @ref="@Element" style="@Style" @attributes="Attributes" class="@GetCssClass()" id="@GetId()"
-         role="checkboxgroup" aria-disabled="@(Disabled ? "true" : "false")" @onfocus=@OnFocus @onblur=@OnBlur
+         role="group" aria-label="@Name" aria-activedescendant="@GetActiveDescendantId()" aria-disabled="@(Disabled ? "true" : "false")" @onfocus=@OnFocus @onblur=@OnBlur
         tabindex="@(Disabled ? "-1" : $"{TabIndex}")" @onkeydown="@(args => OnKeyPress(args))" @onkeydown:preventDefault=preventKeyPress @onkeydown:stopPropagation="stopKeydownPropagation">
         @if (AllowSelectAll)
         {
@@ -44,7 +44,7 @@
                 @if (item.Template != null)
                 {
                     <div class="rz-chkbox-template" @onkeydown:stopPropagation="stopGuardKeydownPropagation" @onkeydown="OnGuardKeyDown">
-                        @item.Template(item)
+                        @item.Template
                     </div>
                 }
                 else

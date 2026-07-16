@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 
 namespace Radzen
@@ -145,6 +146,42 @@ namespace Radzen
                 SeriesA = "#3d71b8",
                 SeriesB = "#663db8",
                 SeriesC = "#b83dae"
+            },
+            new Theme {
+                Text = "Material 3 Expressive",
+                Value = "material3expressive",
+                Premium = true,
+                Primary = "#5f33d6",
+                Secondary = "#573d8f",
+                Base = "#ffffff",
+                Selection = "rgba(69, 0, 255, 0.13)",
+                SelectionText = "#21005d",
+                Content = "#f9f8fc",
+                TitleText = "#1c1b20",
+                ContentText = "#77747e",
+                ButtonRadius = "4",
+                CardRadius = "8",
+                SeriesA = "#9675f0",
+                SeriesB = "#f075ed",
+                SeriesC = "#f07591"
+            },
+            new Theme {
+                Text = "Material 3 Expressive Dark",
+                Value = "material3expressive-dark",
+                Premium = true,
+                Primary = "#cdbcff",
+                Secondary = "#c8b9e5",
+                Base = "#141218",
+                Selection = "rgba(205, 188, 255, 0.24)",
+                SelectionText = "#c8b9e5",
+                Content = "#1c1b20",
+                TitleText = "#e2e0e9",
+                ContentText = "#e2e0e9",
+                ButtonRadius = "4",
+                CardRadius = "8",
+                SeriesA = "#5c3db8",
+                SeriesB = "#b83db7",
+                SeriesC = "#b83d5b"
             },
             new Theme {
                 Text = "Fluent",
@@ -377,6 +414,7 @@ namespace Radzen
         /// </summary>
         public string? Theme
         {
+            [UnconditionalSuppressMessage(TrimMessages.Trimming, TrimMessages.IL2026, Justification = TrimMessages.ThemeTypePreserved)]
             get
             {
                 if (theme == null)
@@ -471,6 +509,7 @@ namespace Radzen
                 }
             }
         }
+        [UnconditionalSuppressMessage(TrimMessages.Trimming, TrimMessages.IL2026, Justification = TrimMessages.AssemblyMetadataPreserved)]
         private static readonly string? Version = typeof(ThemeService).Assembly.GetName().Version?.ToString();
 
         internal string Href => $"{Path}/{Theme}-base.css?v={Version}";
