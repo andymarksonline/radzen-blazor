@@ -73,15 +73,65 @@
         }
         else
         {
+            var renderedAppts = new List<AppointmentRenderData>();
             // Altered code to bodge event times
+            var weekNo = 0;
             foreach (var week in (weeks ?? new List<Week>()))
             {
-                var alreadyRenderedAppointments = new List<AppointmentData>();
-                double totTop = 0;
+                weekNo++;
                 if (week?.Bands == null || week?.Days == null) continue;
+                // Get all the day-spanning events first in date order
+                var infos = week.Bands!.SelectMany(b => b).ToList().Where(b => b.Data!.End.Subtract(b.Data.Start).TotalDays > 1).OrderBy(i => i.Data!.Start).ToList();
+                // Add the single day events, this ensures we process day spanning events first.
+                infos.AddRange(week.Bands!.SelectMany(b => b).ToList().Where(b => b.Data!.Start.Date == b.Data.End.Date).OrderBy(i => i.Data!.Start).ToList());
                 <div class="rz-week">
                     <div class="rz-events">
-                        @for (var bandIndex = 0; bandIndex < week.Bands.Length; bandIndex++)
+                        @foreach (var info in infos)
+                        {
+                            var fullDay = TimeSpan.FromDays(1);
+                            var dayIndex = info.DayIndex;
+                            var day = week.Days[dayIndex];
+                            var slotWidth = 100 / 7.0;
+                            var left = dayIndex * slotWidth;
+                            double startTimeOffset = 0;
+                            if (day.Start.Date == info!.Data!.Start.Date)
+                            {
+                                // Offset the start by the start time, if this is not a continuation of an event
+                                double percentageStart = (info!.Data!.Start.TimeOfDay.TotalSeconds / fullDay.TotalSeconds) * 100;
+                                startTimeOffset = (slotWidth / 100) * percentageStart;
+                                left += startTimeOffset;
+                            }
+                            var length = Math.Max(1, Math.Ceiling(info!.Data!.End.Subtract(week.Start).TotalDays) - dayIndex);
+                            var width = info.Data.End <= week.End ? (length) * slotWidth : (7 - dayIndex) * slotWidth;
+                            width -= startTimeOffset;
+
+                            if (info!.Data!.End.Date < week.End)
+                            {
+                                var percentage = (info!.Data!.End.TimeOfDay.TotalSeconds / fullDay.TotalSeconds) * 100;
+                                var endTimeOffset = slotWidth - ((slotWidth / 100) * percentage);
+                                width -= endTimeOffset;
+                            }
+                            double top = 0;
+                            var height = 1.5;
+                            var right = left + width;
+                            // If the appointment spans multiple days, we want to render it at the top of the slot
+                            if (info.Data.Start.Date != info.Data.End.Date)
+                            {
+                                top = 1;
+                            }
+                            else
+                            {
+                                var existingApptsForWeek = renderedAppts.Where(existing => existing.WeekNo == weekNo).ToList();
+                                var v = existingApptsForWeek.Where(existing => existing.Left <= right && existing.Right >= left).DistinctBy(existing => existing.Top).Count();
+                                top = 1 + (v * height);
+                            }
+
+                            renderedAppts.Add(new AppointmentRenderData(weekNo, left, right, top, info.Data!.Text));
+                            <Appointment Data=@info.Data Top=@top Left=@left Width=@width Height=@height Click=@OnAppointmentClick
+                                         CssClass="@(CurrentDate >= day.Start && CurrentDate <= day.Start.AddDays(1) && object.Equals(currentAppointments?.ElementAtOrDefault(currentAppointment), info.Data) ? "rz-state-focused" : "")"
+                                         DragStart=@OnAppointmentDragStart />
+                        }
+                        @*      @for (var bandIndex = 0; bandIndex < week.Bands.Length; bandIndex++)
                         {
                             var fullDay = TimeSpan.FromDays(1);
                             var band = week.Bands[bandIndex].ToList();
@@ -109,42 +159,28 @@
                                     var endTimeOffset = slotWidth - ((slotWidth / 100) * percentage);
                                     width -= endTimeOffset;
                                 }
-                                DateTime eventEnd = info.Data.End.AddTicks(-(info.Data.End.Ticks % TimeSpan.TicksPerSecond));
 
-                                double top = 1;
+                                double top = 0;
                                 var height = 1.5;
-                                // Single day events go after any multi day events in position 1.5, then 3, etc. depending on how many events are in the same slot
-                                if (info.Data.Start.TimeOfDay.Ticks == 0 && eventEnd.TimeOfDay == new TimeSpan(23, 59, 59))
+                                //var weekNo = weeks!.IndexOf(week);
+                                var right = left + width;
+                                // If the appointment spans multiple days, we want to render it at the top of the slot
+                                if (info.Data.Start.Date != info.Data.End.Date)
                                 {
-                                    // If there is a multi-day appointment that spans this one then we move this one below it
-                                    if (Appointments!.Any(appt => appt.Start < info.Data.End && appt.End > info.Data.Start
-                                        && appt.Start != info.Data.Start && appt.End != info.Data.End))
-                                    {
-                                        if (alreadyRenderedAppointments!.Any(appt => appt.Start == info.Data.Start && appt.End == info.Data.End))
-                                        {
-                                            totTop += (totTop == 0 ? 2.5 : 1.5);
-                                        }
-                                        else
-                                        {
-                                            totTop = 2.5;
-                                        }
-                                    }
-                                    else if (alreadyRenderedAppointments!.Any(appt => appt.Start == info.Data.Start && appt.End == info.Data.End))
-                                    {
-                                        totTop += totTop == 0 ? 1 : 1.5;
-                                    }
-                                    else
-                                    {
-                                        totTop = 1;
-                                    }
-                                    top = totTop;
+                                    top = 1;
                                 }
+                                else
+                                {
+                                    var existingApptsForWeek = renderedAppts.Where(existing => existing.WeekNo == weekNo).ToList();
+                                    var v = existingApptsForWeek.Where(existing => existing.Left <= right && existing.Right >= left).DistinctBy(existing => existing.Top).Count();
+                                    top = 1 + (v * height);
+                                }
+
+                                renderedAppts.Add(new AppointmentRenderData(weekNo, left, right, top, info.Data!.Text));
                                 <Appointment Data=@info.Data Top=@top Left=@left Width=@width Height=@height Click=@OnAppointmentClick
                                              CssClass="@(CurrentDate >= day.Start && CurrentDate <= day.Start.AddDays(1) && object.Equals(currentAppointments?.ElementAtOrDefault(currentAppointment), info.Data) ? "rz-state-focused" : "")"
                                              DragStart=@OnAppointmentDragStart />
-                                alreadyRenderedAppointments.Add(info.Data);
-                            }
-                        }
+                            } *@                        
                     </div>
                     <div class="rz-slots">
                         @for (var day = 0; day < 7; day++)
@@ -171,6 +207,22 @@
 </div>
 
 @code {
+    public class AppointmentRenderData
+    {
+        public AppointmentRenderData(int weekNo, double left, double right, double top, string text)
+        {
+            WeekNo = weekNo;
+            Left = left;
+            Right = right;
+            Top = top;
+            Text = text;
+        }
+        public int WeekNo { get; set; }
+        public double Left { get; set; }
+        public double Right { get; set; }
+        public double Top { get; set; }
+        public string Text { get; set; }
+    }
     class Day
     {
         public AppointmentData[]? Appointments { get; set; }
